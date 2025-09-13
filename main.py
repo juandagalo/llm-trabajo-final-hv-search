@@ -1,6 +1,5 @@
 import streamlit as st
 from typing import List, Dict, Any
-# Integración real con RagSearch
 from RagSearch import answer_question
 
 def process_user_message(message: str) -> str:
