@@ -1,3 +1,5 @@
+# Ignore all PDF files
+*.pdf
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
