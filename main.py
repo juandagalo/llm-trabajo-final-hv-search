@@ -1,22 +1,20 @@
 import streamlit as st
 from typing import List, Dict, Any
-
+# Integración real con RagSearch
+from RagSearch import answer_question
 
 def process_user_message(message: str) -> str:
     """
-    Process the user's message and return a response.
-    
-    This is the integration point where you can hook your custom work.
-    Replace this function with your actual logic for generating responses.
-    
-    Args:
-        message (str): The user's input message
-        
-    Returns:
-        str: The response to display in the chat
+    Procesa el mensaje del usuario usando el historial de conversación de session_state.
     """
-    # TODO: Replace this with your actual processing logic
-    return f"Echo: {message} (This is a placeholder response. Replace process_user_message() with your custom logic.)"
+    # Asegura que el historial tenga el mensaje system si está vacío
+    if not st.session_state.messages or st.session_state.messages[0]["role"] != "system":
+        st.session_state.messages.insert(0, {
+            "role": "system",
+            "content": "Eres un experto en recursos humanos y selección de personal."
+        })
+    # Pasa el historial a answer_question (se modifica en el propio método)
+    return answer_question(message, st.session_state.messages)
 
 
 def initialize_session_state():
