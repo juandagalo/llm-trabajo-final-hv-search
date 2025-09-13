@@ -55,14 +55,24 @@ def process_user_message(message: str) -> str:
     return response
 ```
 
+## Screenshots
+
+### Initial Application View
+![Initial Chat Interface](streamlit-chat-app-initial.png)
+
+### Chat Conversation Example
+![Chat with Response](streamlit-chat-app-with-conversation.png)
+
 ## Project Structure
 
 ```
 llm-trabajo-final-hv-search/
-├── main.py              # Main Streamlit application
-├── requirements.txt     # Python dependencies
-├── README.md           # This file
-└── .gitignore          # Git ignore rules
+├── main.py                                    # Main Streamlit application
+├── requirements.txt                           # Python dependencies
+├── README.md                                 # This file
+├── streamlit-chat-app-initial.png            # Screenshot of initial UI
+├── streamlit-chat-app-with-conversation.png  # Screenshot showing chat functionality
+└── .gitignore                                # Git ignore rules
 ```
 
 ## Contributing
