@@ -42,10 +42,20 @@ def get_embedding(text: str) -> np.ndarray:
     faiss.normalize_L2(emb)
     return emb
 
-def load_artifacts():
-    """Carga índice FAISS y el dataframe de chunks (parquet)."""
-    index = faiss.read_index(FAISS_INDEX_PATH)
-    df = pd.read_parquet(PARQUET_PATH)
+def load_artifacts(mode: str = "hr"):
+    """Carga índice FAISS y el dataframe de chunks (parquet).
+    mode: "hr" for Human Resources, "qa" for QA Testing - allows for different indices in the future."""
+    # For now, both modes use the same index, but this can be extended
+    faiss_path = FAISS_INDEX_PATH
+    parquet_path = PARQUET_PATH
+    
+    # Future extension: different indices for different modes
+    # if mode == "qa":
+    #     faiss_path = os.getenv("FAISS_INDEX_PATH_QA", "./faiss_index_qa.faiss")
+    #     parquet_path = os.getenv("CHUNKS_PARQUET_PATH_QA", "./chunks_qa.parquet")
+    
+    index = faiss.read_index(faiss_path)
+    df = pd.read_parquet(parquet_path)
     # Normaliza nombres: intenta usar columna 'text' si existe; si no, usa la primera
     if "text" not in df.columns:
         if len(df.columns) == 1:
@@ -63,9 +73,10 @@ def cosine_from_l2_dist(dist_sq: np.ndarray) -> np.ndarray:
     """
     return 1.0 - dist_sq / 2.0
 
-def search(query: str, k: int = 10):
-    """Busca los k más cercanos al embedding de la consulta y devuelve un DataFrame con resultados."""
-    index, df = load_artifacts()
+def search(query: str, k: int = 10, mode: str = "hr"):
+    """Busca los k más cercanos al embedding de la consulta y devuelve un DataFrame con resultados.
+    mode: "hr" for Human Resources, "qa" for QA Testing - can be used for different search strategies."""
+    index, df = load_artifacts(mode)
     q = get_embedding(query)
     D, I = index.search(q, k)
     D = D[0]

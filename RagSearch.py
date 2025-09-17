@@ -18,15 +18,22 @@ client = AzureOpenAI(
 )
 
 
-def answer_question(query: str, conversation_history: list) -> str:
+def answer_question(query: str, conversation_history: list, mode: str = "hr") -> str:
     """
     Dada una pregunta, busca contexto relevante y genera una respuesta usando Azure OpenAI.
     conversation_history debe ser una lista de mensajes (dicts) gestionada externamente (por ejemplo, en session_state).
+    mode: "hr" for Human Resources, "qa" for QA Testing - determines search strategy and context.
     """
-    res = search(query)
+    res = search(query, mode=mode)
     results = list(res['text'].values)
     context = "\n\n".join(results)
-    prompt = f"Contexto:\n{context}\n\nPregunta: {query}\nRespuesta:"
+    
+    # Adjust prompt based on mode
+    if mode == "qa":
+        prompt = f"Contexto de testing y QA:\n{context}\n\nPregunta relacionada con testing: {query}\nRespuesta como experto en QA:"
+    else:
+        prompt = f"Contexto:\n{context}\n\nPregunta: {query}\nRespuesta:"
+    
     conversation_history.append({"role": "user", "content": prompt})
     response = client.chat.completions.create(
         model=MODEL,
