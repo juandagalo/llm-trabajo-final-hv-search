@@ -25,26 +25,14 @@ API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
 
 # ========= Cliente Azure OpenAI =========
-try:
-    client = AzureOpenAI(
-        api_key=API_KEY,
-        api_version=API_VERSION,
-        azure_endpoint=ENDPOINT
-    )
-    MOCK_MODE = False
-except Exception:
-    client = None
-    MOCK_MODE = True
+client = AzureOpenAI(
+    api_key=API_KEY,
+    api_version=API_VERSION,
+    azure_endpoint=ENDPOINT
+)
 
 def get_embedding(text: str) -> np.ndarray:
     """Obtiene el embedding de una sola frase."""
-    if MOCK_MODE:
-        # Return a mock embedding for demo purposes
-        emb = np.random.rand(1536).astype('float32')  # Common embedding size
-        emb = np.ascontiguousarray(emb.reshape(1, -1))
-        faiss.normalize_L2(emb)
-        return emb
-        
     resp = client.embeddings.create(
         input=[text],
         model=DEPLOYMENT
@@ -65,28 +53,6 @@ def load_artifacts(mode: str = "hr"):
     # if mode == "qa":
     #     faiss_path = os.getenv("FAISS_INDEX_PATH_QA", "./faiss_index_qa.faiss")
     #     parquet_path = os.getenv("CHUNKS_PARQUET_PATH_QA", "./chunks_qa.parquet")
-    
-    if MOCK_MODE:
-        # Create mock data for demo purposes
-        mock_data = {
-            "text": [
-                "This is a sample HR document about hiring processes and candidate evaluation.",
-                "This document covers QA testing methodologies and best practices.",
-                "Sample content about performance reviews and employee development.",
-                "Information about software testing frameworks and automation tools.",
-                "HR policies and procedures for remote work arrangements."
-            ]
-        }
-        df = pd.DataFrame(mock_data)
-        
-        # Create a simple mock FAISS index
-        d = 1536  # Common embedding dimension
-        index = faiss.IndexFlatL2(d)
-        mock_embeddings = np.random.rand(len(mock_data["text"]), d).astype('float32')
-        faiss.normalize_L2(mock_embeddings)
-        index.add(mock_embeddings)
-        
-        return index, df
     
     index = faiss.read_index(faiss_path)
     df = pd.read_parquet(parquet_path)
