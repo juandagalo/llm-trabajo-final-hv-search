@@ -1,0 +1,7 @@
+# Archivos procesados en esta indexación
+# Total de archivos: 3
+# Generado automáticamente por indexer_common.py
+
+Holidays & Leave Policy.pdf
+Política beneficio Bienestar Nexer 2025.pdf
+Referral Policy Nexer.pdf

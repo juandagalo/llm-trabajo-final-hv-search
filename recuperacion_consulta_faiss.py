@@ -130,41 +130,98 @@ def cosine_from_l2_dist(dist_sq: np.ndarray) -> np.ndarray:
 
 
 def check_available_modes():
+    """
+    Verifica qué modos están disponibles según los archivos presentes.
+    
+    Returns:
+        dict: Diccionario con información sobre modos disponibles incluyendo archivos procesados
+    """
     available_modes = {}
+    
+    # Configurar rutas de archivos de filenames
+    hr_filenames_path = os.path.splitext(PARQUET_HR_PATH)[0] + "_filenames.txt"
+    qa_filenames_path = os.path.splitext(PARQUET_QA_PATH)[0] + "_filenames.txt"
     
     # Verificar modo HR
     if os.path.exists(FAISS_INDEX_HR_PATH) and os.path.exists(PARQUET_HR_PATH):
+        # Cargar lista de archivos procesados
+        processed_files = load_processed_files(hr_filenames_path)
         available_modes["hr"] = {
             "available": True,
             "faiss_path": FAISS_INDEX_HR_PATH,
             "parquet_path": PARQUET_HR_PATH,
-            "description": "Human Resources documents"
+            "filenames_path": hr_filenames_path,
+            "processed_files": processed_files,
+            "file_count": len(processed_files),
+            "description": f"Human Resources documents ({len(processed_files)} files indexed)"
         }
     else:
         available_modes["hr"] = {
             "available": False,
             "faiss_path": FAISS_INDEX_HR_PATH,
             "parquet_path": PARQUET_HR_PATH,
+            "filenames_path": hr_filenames_path,
+            "processed_files": [],
+            "file_count": 0,
             "description": "Human Resources documents (run indexerHR.py to create)"
         }
     
     # Verificar modo QA
     if os.path.exists(FAISS_INDEX_QA_PATH) and os.path.exists(PARQUET_QA_PATH):
+        # Cargar lista de archivos procesados
+        processed_files = load_processed_files(qa_filenames_path)
         available_modes["qa"] = {
             "available": True,
             "faiss_path": FAISS_INDEX_QA_PATH,
             "parquet_path": PARQUET_QA_PATH,
-            "description": "QA Testing documents"
+            "filenames_path": qa_filenames_path,
+            "processed_files": processed_files,
+            "file_count": len(processed_files),
+            "description": f"QA Testing documents ({len(processed_files)} files indexed)"
         }
     else:
         available_modes["qa"] = {
             "available": False,
             "faiss_path": FAISS_INDEX_QA_PATH,
             "parquet_path": PARQUET_QA_PATH,
+            "filenames_path": qa_filenames_path,
+            "processed_files": [],
+            "file_count": 0,
             "description": "QA Testing documents (run indexerQA.py to create)"
         }
     
     return available_modes
+
+
+def load_processed_files(filenames_path):
+    """
+    Carga la lista de archivos procesados desde un archivo de texto.
+    
+    Args:
+        filenames_path: Ruta del archivo de texto con los nombres
+        
+    Returns:
+        Lista de nombres de archivos o lista vacía si hay error
+    """
+    try:
+        if not os.path.exists(filenames_path):
+            return []
+            
+        with open(filenames_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            
+        # Filtrar líneas que no son comentarios y no están vacías
+        filenames = []
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                filenames.append(line)
+                
+        return filenames
+        
+    except Exception as e:
+        print(f"Error cargando lista de archivos: {e}")
+        return []
 
 def search(query: str, k: int = 10, mode: str = "hr"):
     print(f"Buscando en modo: {mode.upper()}")

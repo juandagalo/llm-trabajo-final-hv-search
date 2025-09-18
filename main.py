@@ -146,14 +146,22 @@ def main():
         
         with col1:
             if mode_status["hr"]["available"]:
-                st.success("✅ HR Documents: Available")
+                st.success(f"✅ HR Documents: {mode_status['hr']['file_count']} files indexed")
+                if mode_status['hr']['processed_files']:
+                    with st.expander("View indexed HR files"):
+                        for filename in mode_status['hr']['processed_files']:
+                            st.text(f"📄 {filename}")
             else:
                 st.warning("⚠️ HR Documents: Not indexed")
                 st.caption("Run `indexerHR.py` to index HR documents")
                 
         with col2:
             if mode_status["qa"]["available"]:
-                st.success("✅ QA Documents: Available") 
+                st.success(f"✅ QA Documents: {mode_status['qa']['file_count']} files indexed")
+                if mode_status['qa']['processed_files']:
+                    with st.expander("View indexed QA files"):
+                        for filename in mode_status['qa']['processed_files']:
+                            st.text(f"📄 {filename}")
             else:
                 st.warning("⚠️ QA Documents: Not indexed")
                 st.caption("Run `indexerQA.py` to index QA documents")
@@ -215,13 +223,17 @@ def main():
         
         # HR Status
         if mode_status["hr"]["available"]:
-            st.success("✅ HR Documents: Indexed")
+            st.success(f"✅ HR Documents: {mode_status['hr']['file_count']} files")
+            if st.button("📋 View HR Files", key="hr_files"):
+                st.text("\n".join(mode_status['hr']['processed_files']))
         else:
             st.warning("⚠️ HR Documents: Not indexed")
             
         # QA Status  
         if mode_status["qa"]["available"]:
-            st.success("✅ QA Documents: Indexed")
+            st.success(f"✅ QA Documents: {mode_status['qa']['file_count']} files")
+            if st.button("📋 View QA Files", key="qa_files"):
+                st.text("\n".join(mode_status['qa']['processed_files']))
         else:
             st.warning("⚠️ QA Documents: Not indexed")
             

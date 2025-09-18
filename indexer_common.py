@@ -7,6 +7,60 @@ from textManipulation import chunk_text, collect_files, extract_text_by_ext
 from azure_client import get_azure_client, get_embedding_deployment
 
 
+def save_processed_files(filenames, output_path):
+    """
+    Guarda la lista de archivos procesados en un archivo de texto.
+    
+    Args:
+        filenames: Lista de nombres de archivos procesados
+        output_path: Ruta donde guardar el archivo de texto
+    """
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write("# Archivos procesados en esta indexación\n")
+            f.write(f"# Total de archivos: {len(filenames)}\n")
+            f.write("# Generado automáticamente por indexer_common.py\n\n")
+            
+            for filename in sorted(filenames):
+                f.write(f"{filename}\n")
+                
+        print(f"Lista de archivos procesados guardada en: {output_path}")
+        
+    except Exception as e:
+        print(f"Error guardando lista de archivos: {e}")
+
+
+def load_processed_files(filenames_path):
+    """
+    Carga la lista de archivos procesados desde un archivo de texto.
+    
+    Args:
+        filenames_path: Ruta del archivo de texto con los nombres
+        
+    Returns:
+        Lista de nombres de archivos o lista vacía si hay error
+    """
+    try:
+        if not os.path.exists(filenames_path):
+            return []
+            
+        with open(filenames_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            
+        # Filtrar líneas que no son comentarios y no están vacías
+        filenames = []
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                filenames.append(line)
+                
+        return filenames
+        
+    except Exception as e:
+        print(f"Error cargando lista de archivos: {e}")
+        return []
+
+
 def load_config(default_folder, default_index_path, default_chunks_path, chunk_size, overlap):
     """
     Carga las variables de entorno y devuelve un diccionario de configuración.
@@ -26,6 +80,11 @@ def load_config(default_folder, default_index_path, default_chunks_path, chunk_s
         'out_index': os.getenv("FAISS_INDEX_PATH", default_index_path),
         'chunks_parquet': os.getenv("CHUNKS_PARQUET_PATH", default_chunks_path)
     }
+    
+    # Agregar ruta para el archivo de filenames
+    base_name = os.path.splitext(config['chunks_parquet'])[0]
+    config['filenames_txt'] = f"{base_name}_filenames.txt"
+    
     return config
 
 
@@ -33,17 +92,24 @@ def process_documents(config):
     """
     Procesa los documentos de la carpeta indicada, generando los chunks y sus embeddings.
     Cada chunk lleva el nombre del candidato (extraído del nombre del archivo) al inicio.
-    Devuelve dos listas: los chunks y los embeddings.
+    Devuelve dos listas: los chunks y los embeddings, y guarda la lista de archivos procesados.
     """
     client = get_azure_client()
     deployment = get_embedding_deployment()
     
     chunks = []
     embeddings = []
-    for file in collect_files(config['folder']):
+    processed_files = []
+    
+    files_to_process = collect_files(config['folder'])
+    
+    for file in files_to_process:
         ch = chunk_text(extract_text_by_ext(file), config['chunk_size'], config['overlap'])
         print(f'Documento: {file}, compuesto de {len(ch)} chunks')
         chunks.extend(ch)
+        
+        # Guardar el nombre del archivo para el registro
+        processed_files.append(os.path.basename(file))
         
         if client:
             response = client.embeddings.create(
@@ -58,6 +124,10 @@ def process_documents(config):
             print("⚠️  Usando embeddings mock (modo demo)")
         
         embeddings.extend(embs)
+    
+    # Guardar la lista de archivos procesados
+    save_processed_files(processed_files, config['filenames_txt'])
+    
     return chunks, embeddings
 
 
