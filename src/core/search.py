@@ -131,7 +131,7 @@ class DocumentSearcher:
         Returns:
             DataFrame with search results sorted by similarity
         """
-        print(f"Searching in {mode.upper()} mode")
+        # print(f"Searching in {mode.upper()} mode")
         
         index, df = self.load_artifacts(mode)
         query_embedding = self.get_embedding(query)
@@ -149,7 +149,7 @@ class DocumentSearcher:
         # Sort by similarity (highest first)
         results = results.sort_values("cosine_similarity", ascending=False).reset_index(drop=True)
         
-        print(f"Found {len(results)} results in {mode.upper()} index")
+        # print(f"Found {len(results)} results in {mode.upper()} index")
         return results
     
     def get_available_modes(self) -> Dict[str, Dict[str, Any]]:

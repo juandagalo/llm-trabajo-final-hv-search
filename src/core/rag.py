@@ -46,16 +46,16 @@ class RAGService:
         # Perform document search
         search_results = search(query, mode=mode)
         context_documents = list(search_results['text'].values)
-        context = "\\n\\n".join(context_documents)
+        context = "\n\n".join(context_documents)
         
         # Create mode-specific prompt
         if mode == "qa":
-            prompt = (f"Contexto de testing y QA:\\n{context}\\n\\n"
-                     f"Pregunta relacionada con testing: {query}\\n"
-                     f"Respuesta como experto en QA:")
+            prompt = (f"Contexto:\n{context}\n\n"
+                     f"Pregunta: {query}\n"
+                     f"Respuesta:")
         else:
-            prompt = (f"Contexto:\\n{context}\\n\\n"
-                     f"Pregunta: {query}\\n"
+            prompt = (f"Contexto:\n{context}\n\n"
+                     f"Pregunta: {query}\n"
                      f"Respuesta:")
         
         # Add to conversation history
