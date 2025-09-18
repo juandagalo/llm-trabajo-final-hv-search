@@ -1,6 +1,7 @@
 import streamlit as st
 from typing import List, Dict, Any
-from RagSearch import answer_question, MOCK_MODE
+from RagSearch import answer_question
+from azure_client import is_mock_mode
 
 def process_user_message(message: str) -> str:
     """
@@ -63,7 +64,7 @@ def main():
     st.caption("A Streamlit chat interface for your LLM work")
     
     # Show demo mode warning if in mock mode
-    if MOCK_MODE:
+    if is_mock_mode():
         st.warning("⚠️ Running in DEMO MODE - Azure OpenAI credentials not configured. Responses are simulated for demonstration purposes.")
     
     # Initialize session state

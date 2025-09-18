@@ -1,26 +1,6 @@
 
-import os
-from openai import AzureOpenAI
 from recuperacion_consulta_faiss import search
-from dotenv import load_dotenv
-
-# Cargar configuración desde .env
-load_dotenv()
-API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
-ENDPOINT = os.getenv("ENDPOINT")
-MODEL = os.getenv("AZURE_OPENAI_CHAT_MODEL", "gpt-4.1-nano")
-
-try:
-    client = AzureOpenAI(
-        api_key=API_KEY,
-        api_version=API_VERSION,
-        azure_endpoint=ENDPOINT
-    )
-    MOCK_MODE = False
-except Exception:
-    client = None
-    MOCK_MODE = True
+from azure_client import get_azure_client, get_chat_model, is_mock_mode
 
 
 def answer_question(query: str, conversation_history: list, mode: str = "hr") -> str:
@@ -29,7 +9,7 @@ def answer_question(query: str, conversation_history: list, mode: str = "hr") ->
     conversation_history debe ser una lista de mensajes (dicts) gestionada externamente (por ejemplo, en session_state).
     mode: "hr" for Human Resources, "qa" for QA Testing - determines search strategy and context.
     """
-    if MOCK_MODE:
+    if is_mock_mode():
         # Return a mock response based on mode for demo purposes
         mode_responses = {
             "hr": f"[DEMO MODE] Based on HR knowledge, regarding '{query}': This would be a response about human resources topics, including hiring, performance management, employee relations, and workplace policies. The system would normally search through HR documents to provide specific answers.",
@@ -46,13 +26,17 @@ def answer_question(query: str, conversation_history: list, mode: str = "hr") ->
     
     # Adjust prompt based on mode
     if mode == "qa":
-        prompt = f"Contexto de testing y QA:\n{context}\n\nPregunta relacionada con testing: {query}\nRespuesta como experto en QA:"
+        prompt = f"Contexto:\n{context}\n\nPregunta relacionada con testing: {query}\nRespuesta:"
     else:
         prompt = f"Contexto:\n{context}\n\nPregunta: {query}\nRespuesta:"
     
     conversation_history.append({"role": "user", "content": prompt})
+    
+    client = get_azure_client()
+    model = get_chat_model()
+    
     response = client.chat.completions.create(
-        model=MODEL,
+        model=model,
         messages=conversation_history
     )
     assistant_reply = response.choices[0].message.content

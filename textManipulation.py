@@ -1,15 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep  8 21:58:25 2025
-
-@author: 000010478
-"""
-
 from typing import List
 from pathlib import Path
 import glob
 import tiktoken
-from pypdf import PdfReader  # pip install pypdf
+from pypdf import PdfReader
 
 def read_txt(path: str) -> str:
     """Lee el contenido de un archivo de texto plano."""
