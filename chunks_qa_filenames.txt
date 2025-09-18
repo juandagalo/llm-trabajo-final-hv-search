@@ -1,5 +1,0 @@
-# Archivos procesados en esta indexación
-# Total de archivos: 1
-# Generado automáticamente por indexer_common.py
-
-ISTQB_CTFL_Syllabus_v4.0.1.pdf

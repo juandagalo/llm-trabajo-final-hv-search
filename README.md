@@ -1,84 +1,214 @@
+# LLM Trabajo Final HV Search
 
-# LLM Trabajo Final - HV Search
+A sophisticated document search and chat application using Azure OpenAI, FAISS vector search, and Streamlit for HR and QA document management.
 
-Aplicación de chat con Streamlit y recuperación semántica de información usando embeddings y Azure OpenAI.
-
-## Descripción General
-
-Este proyecto permite indexar documentos PDF/TXT, generar embeddings con Azure OpenAI, construir un índice FAISS y consultar información relevante mediante una interfaz de chat.
-
-## Estructura de Archivos
+## 🏗️ Project Structure
 
 ```
 llm-trabajo-final-hv-search/
-├── main.py                  # Aplicación principal Streamlit (controla el chat y el historial)
-├── RagSearch.py             # Lógica de respuesta: consulta FAISS y llama a Azure OpenAI (importar como RagSearch)
-├── recuperacion_consulta_faiss.py # Funciones para búsqueda semántica y consulta al índice FAISS
-├── indexer.py               # Script para indexar documentos y construir el índice FAISS
-├── textManipulation.py      # Utilidades para leer, trocear y procesar textos
-├── requirements.txt         # Dependencias Python
-├── .env                     # Variables de entorno (no se sube a git, ver .gitignore)
-├── README.md                # Este archivo
-├── DocumentosPDF/           # Carpeta donde van los PDFs/TXT a indexar
-├── faiss_index.faiss        # Índice FAISS generado (no se sube a git)
-├── chunks.parquet           # Chunks indexados (no se sube a git)
-├── streamlit-chat-app-initial.png
-├── streamlit-chat-app-with-conversation.png
-└── .gitignore
+├── src/                           # Source code modules
+│   ├── core/                      # Core business logic
+│   │   ├── __init__.py
+│   │   ├── azure_client.py        # Azure OpenAI client management
+│   │   ├── indexer.py             # Document indexing functionality
+│   │   ├── search.py              # FAISS search operations
+│   │   └── rag.py                 # RAG (Retrieval-Augmented Generation)
+│   ├── utils/                     # Utility functions
+│   │   ├── __init__.py
+│   │   ├── text_processing.py     # Text extraction and chunking
+│   │   └── file_tracking.py       # File tracking utilities
+│   ├── config/                    # Configuration management
+│   │   ├── __init__.py
+│   │   └── settings.py            # Centralized configuration
+│   └── __init__.py
+├── data/                          # Data directory
+│   └── indexes/                   # FAISS indexes and metadata
+├── DocumentosHR/                  # HR documents folder
+├── DocumentosQA/                  # QA documents folder
+├── app.py                         # Streamlit web application
+├── indexer_hr.py                  # HR document indexer script
+├── indexer_qa.py                  # QA document indexer script
+├── requirements.txt               # Python dependencies
+└── README.md                      # This file
 ```
 
-### Archivos principales:
-- **main.py**: Interfaz de usuario con Streamlit. Controla el historial de conversación usando `st.session_state` y llama a la función `answer_question` de `RagSearch.py`.
-- **RagSearch.py**: Expone la función `answer_question(query, conversation_history)` que busca contexto relevante y genera la respuesta usando Azure OpenAI. No mantiene historial global, sino que recibe el historial desde `main.py`.
-- **recuperacion_consulta_faiss.py**: Funciones para cargar el índice FAISS, calcular embeddings y buscar los chunks más relevantes.
-- **indexer.py**: Script para procesar los documentos, generar los chunks y embeddings, y construir el índice FAISS. Debe ejecutarse manualmente para actualizar el índice.
-- **textManipulation.py**: Utilidades para leer PDFs/TXT y trocear textos en chunks.
+## 🚀 Quick Start
 
-### Archivos que no se cargan automáticamente:
-- **.env**: Debes crear este archivo con tus credenciales y rutas. Ejemplo:
-  ```env
-  ENDPOINT=https://pnl-maestria.openai.azure.com/
-  DEPLOYMENT=text-embedding-3-small
-  AZURE_OPENAI_API_KEY=tu_api_key
-  AZURE_OPENAI_API_VERSION=2024-10-21
-  ```
-  Este archivo está en `.gitignore` y no se sube al repositorio por seguridad.
-- **faiss_index.faiss** y **chunks.parquet**: Son artefactos generados por `indexer.py` y requeridos para la búsqueda. No se suben al repositorio y deben generarse localmente.
-- **DocumentosPDF/**: Debes colocar aquí los archivos PDF/TXT a indexar. No se suben al repositorio.
+### 1. Environment Setup
 
-## Instalación y Ejecución
+```bash
+# Activate virtual environment
+.venv\Scripts\Activate.ps1
 
-1. Instala las dependencias:
-    ```bash
-    pip install -r requirements.txt
-    ```
-2. Crea y configura tu archivo `.env` (ver ejemplo arriba).
-3. Coloca tus documentos en `DocumentosPDF/`.
-4. Ejecuta el indexador para construir el índice:
-    ```bash
-    python indexer.py
-    ```
-5. Inicia la aplicación de chat:
-    ```bash
-    streamlit run main.py
-    ```
+# Install dependencies
+pip install -r requirements.txt
+```
 
-## Personalización
+### 2. Configuration
 
-Puedes modificar la función `answer_question` en `RagSearch.py` para cambiar el prompt, el modelo, o la forma en que se construye el contexto.
+Create a `.env` file with your Azure OpenAI credentials:
 
-## Capturas de Pantalla
+```env
+ENDPOINT=https://your-openai-instance.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_API_VERSION=2024-02-01
+DEPLOYMENT=text-embedding-3-small
+AZURE_OPENAI_CHAT_MODEL=gpt-4o
+```
 
-### Vista Inicial
-![Initial Chat Interface](streamlit-chat-app-initial.png)
+### 3. Index Documents
 
-### Ejemplo de Conversación
-![Chat with Response](streamlit-chat-app-with-conversation.png)
+```bash
+# Index HR documents
+python indexer_hr.py
 
-## Contribuir
+# Index QA documents  
+python indexer_qa.py
+```
 
-1. Haz un fork del repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/mi-feature`)
-3. Haz commit de tus cambios (`git commit -m 'Agrega mi feature'`)
-4. Haz push a tu rama (`git push origin feature/mi-feature`)
-5. Abre un Pull Request
+### 4. Run the Application
+
+```bash
+streamlit run app.py
+```
+
+## 📋 Features
+
+### ✅ **Modular Architecture**
+- Clean separation of concerns
+- Reusable components
+- Easy to maintain and extend
+
+### ✅ **Document Processing**
+- PDF and text file support
+- Intelligent text chunking
+- File tracking and metadata
+
+### ✅ **Vector Search**
+- FAISS-based similarity search
+- Azure OpenAI embeddings
+- Cosine similarity scoring
+
+### ✅ **RAG Implementation**
+- Context-aware responses
+- Mode-specific prompts (HR/QA)
+- Conversation history management
+
+### ✅ **User Interface**
+- Interactive Streamlit chat interface
+- Mode selection (HR/QA)
+- Real-time status indicators
+- File list viewing
+
+### ✅ **Robust Configuration**
+- Centralized settings management
+- Environment variable support
+- Mock mode for testing
+
+## 🔧 Core Modules
+
+### `src.core.azure_client`
+Manages Azure OpenAI client configuration and provides singleton access.
+
+### `src.core.indexer`
+Handles document processing, embedding generation, and FAISS index creation.
+
+### `src.core.search`
+Provides document search functionality with similarity scoring.
+
+### `src.core.rag`
+Implements Retrieval-Augmented Generation for question answering.
+
+### `src.utils.text_processing`
+Text extraction, cleaning, and chunking utilities.
+
+### `src.utils.file_tracking`
+Tracks processed files and maintains metadata.
+
+### `src.config.settings`
+Centralized configuration management with environment variable support.
+
+## 🎯 Usage Examples
+
+### Indexing Documents
+
+```python
+from src.core.indexer import run_indexer
+
+# Index HR documents
+run_indexer(mode="hr", chunk_size=100, overlap=10)
+
+# Index QA documents
+run_indexer(mode="qa", chunk_size=150, overlap=15)
+```
+
+### Searching Documents
+
+```python
+from src.core.search import search
+
+# Search HR documents
+results = search("performance review process", k=5, mode="hr")
+
+# Search QA documents
+results = search("test automation", k=5, mode="qa")
+```
+
+### RAG Question Answering
+
+```python
+from src.core.rag import answer_question
+
+conversation = []
+answer = answer_question("What is the leave policy?", conversation, mode="hr")
+```
+
+## 📊 File Tracking
+
+The system automatically tracks processed files:
+
+- `data/indexes/chunks_hr_filenames.txt` - HR documents processed
+- `data/indexes/chunks_qa_filenames.txt` - QA documents processed
+
+## 🛡️ Error Handling
+
+- Graceful fallback to mock mode when Azure credentials are missing
+- Comprehensive error logging
+- Defensive programming with safe dictionary access
+
+## 🔄 Migration from Old Structure
+
+The old files (`main.py`, `indexerHR.py`, `indexerQA.py`, etc.) have been refactored into the new modular structure. The new simplified scripts (`app.py`, `indexer_hr.py`, `indexer_qa.py`) provide the same functionality with cleaner code organization.
+
+## 🧪 Testing
+
+```bash
+# Test the configuration
+python -c "from src.config.settings import Config; print('✅ Config loaded')"
+
+# Test Azure client
+python -c "from src.core.azure_client import get_azure_client; print('✅ Azure client ready')"
+
+# Test search functionality
+python -c "from src.core.search import check_available_modes; print(check_available_modes())"
+```
+
+## 📝 Development
+
+To add new features:
+
+1. Add new modules in appropriate `src/` subdirectories
+2. Update configuration in `src/config/settings.py` if needed
+3. Create corresponding tests
+4. Update this README
+
+## 🤝 Contributing
+
+1. Follow the established module structure
+2. Add proper docstrings and type hints
+3. Update configuration management for new settings
+4. Test both real and mock modes
+
+## 📄 License
+
+This project is part of the LLM Trabajo Final coursework.
