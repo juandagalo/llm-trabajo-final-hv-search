@@ -92,8 +92,10 @@ def initialize_session_state():
 def display_chat_history():
     """Display the chat history."""
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        # Skip system messages - only show user and assistant messages
+        if message["role"] in ["user", "assistant"]:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
 
 def main():
