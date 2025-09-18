@@ -38,18 +38,32 @@ def get_mode_status():
         return {
             "hr": {
                 "available": modes["hr"]["available"],
-                "description": "Human Resources documents" if modes["hr"]["available"] else "No HR documents indexed"
+                "description": modes["hr"]["description"],
+                "file_count": modes["hr"]["file_count"],
+                "processed_files": modes["hr"]["processed_files"]
             },
             "qa": {
                 "available": modes["qa"]["available"], 
-                "description": "QA Testing documents" if modes["qa"]["available"] else "No QA documents indexed"
+                "description": modes["qa"]["description"],
+                "file_count": modes["qa"]["file_count"],
+                "processed_files": modes["qa"]["processed_files"]
             }
         }
     except Exception as e:
         # Fallback if there's an error checking modes
         return {
-            "hr": {"available": False, "description": "Status unknown"},
-            "qa": {"available": False, "description": "Status unknown"}
+            "hr": {
+                "available": False, 
+                "description": "Status unknown",
+                "file_count": 0,
+                "processed_files": []
+            },
+            "qa": {
+                "available": False, 
+                "description": "Status unknown",
+                "file_count": 0,
+                "processed_files": []
+            }
         }
 
 
@@ -146,10 +160,12 @@ def main():
         
         with col1:
             if mode_status["hr"]["available"]:
-                st.success(f"✅ HR Documents: {mode_status['hr']['file_count']} files indexed")
-                if mode_status['hr']['processed_files']:
+                file_count = mode_status["hr"].get("file_count", 0)
+                st.success(f"✅ HR Documents: {file_count} files indexed")
+                processed_files = mode_status["hr"].get("processed_files", [])
+                if processed_files:
                     with st.expander("View indexed HR files"):
-                        for filename in mode_status['hr']['processed_files']:
+                        for filename in processed_files:
                             st.text(f"📄 {filename}")
             else:
                 st.warning("⚠️ HR Documents: Not indexed")
@@ -157,10 +173,12 @@ def main():
                 
         with col2:
             if mode_status["qa"]["available"]:
-                st.success(f"✅ QA Documents: {mode_status['qa']['file_count']} files indexed")
-                if mode_status['qa']['processed_files']:
+                file_count = mode_status["qa"].get("file_count", 0)
+                st.success(f"✅ QA Documents: {file_count} files indexed")
+                processed_files = mode_status["qa"].get("processed_files", [])
+                if processed_files:
                     with st.expander("View indexed QA files"):
-                        for filename in mode_status['qa']['processed_files']:
+                        for filename in processed_files:
                             st.text(f"📄 {filename}")
             else:
                 st.warning("⚠️ QA Documents: Not indexed")
@@ -223,17 +241,21 @@ def main():
         
         # HR Status
         if mode_status["hr"]["available"]:
-            st.success(f"✅ HR Documents: {mode_status['hr']['file_count']} files")
-            if st.button("📋 View HR Files", key="hr_files"):
-                st.text("\n".join(mode_status['hr']['processed_files']))
+            file_count = mode_status["hr"].get("file_count", 0)
+            st.success(f"✅ HR Documents: {file_count} files")
+            processed_files = mode_status["hr"].get("processed_files", [])
+            if processed_files and st.button("📋 View HR Files", key="hr_files"):
+                st.text("\n".join(processed_files))
         else:
             st.warning("⚠️ HR Documents: Not indexed")
             
         # QA Status  
         if mode_status["qa"]["available"]:
-            st.success(f"✅ QA Documents: {mode_status['qa']['file_count']} files")
-            if st.button("📋 View QA Files", key="qa_files"):
-                st.text("\n".join(mode_status['qa']['processed_files']))
+            file_count = mode_status["qa"].get("file_count", 0)
+            st.success(f"✅ QA Documents: {file_count} files")
+            processed_files = mode_status["qa"].get("processed_files", [])
+            if processed_files and st.button("📋 View QA Files", key="qa_files"):
+                st.text("\n".join(processed_files))
         else:
             st.warning("⚠️ QA Documents: Not indexed")
             
