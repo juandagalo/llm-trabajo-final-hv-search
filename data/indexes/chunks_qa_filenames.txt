@@ -1,1 +1,5 @@
-# Archivos procesados en esta indexación\n# Total de archivos: 1\n# Generado automáticamente por el sistema de indexación\n\nISTQB_CTFL_Syllabus_v4.0.1.pdf\n
+# Archivos procesados en esta indexación
+# Total de archivos: 1
+# Generado automáticamente por el sistema de indexación
+
+ISTQB_CTFL_Syllabus_v4.0.1.pdf

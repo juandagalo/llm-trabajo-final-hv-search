@@ -16,12 +16,12 @@ def save_processed_files(filenames: List[str], output_path: str) -> None:
     """
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
-            f.write("# Archivos procesados en esta indexación\\n")
-            f.write(f"# Total de archivos: {len(filenames)}\\n")
-            f.write("# Generado automáticamente por el sistema de indexación\\n\\n")
+            f.write("# Archivos procesados en esta indexación\n")
+            f.write(f"# Total de archivos: {len(filenames)}\n")
+            f.write("# Generado automáticamente por el sistema de indexación\n\n")
             
             for filename in sorted(filenames):
-                f.write(f"{filename}\\n")
+                f.write(f"{filename}\n")
                 
         print(f"Lista de archivos procesados guardada en: {output_path}")
         

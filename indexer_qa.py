@@ -13,4 +13,4 @@ from src.core.indexer import run_indexer
 
 if __name__ == "__main__":
     """Run QA document indexing."""
-    run_indexer(mode="qa")
+    run_indexer(mode="qa", chunk_size=150, overlap=12)

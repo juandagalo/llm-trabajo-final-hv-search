@@ -13,4 +13,4 @@ from src.core.indexer import run_indexer
 
 if __name__ == "__main__":
     """Run HR document indexing."""
-    run_indexer(mode="hr")
+    run_indexer(mode="hr", chunk_size=100, overlap=10)
