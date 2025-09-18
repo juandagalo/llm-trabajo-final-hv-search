@@ -2,6 +2,7 @@ import streamlit as st
 from typing import List, Dict, Any
 from RagSearch import answer_question
 from azure_client import is_mock_mode
+from recuperacion_consulta_faiss import check_available_modes
 
 def process_user_message(message: str) -> str:
     """
@@ -28,6 +29,28 @@ def process_user_message(message: str) -> str:
     
     # Pasa el historial a answer_question (se modifica en el propio método)
     return answer_question(message, st.session_state.messages, st.session_state.mode)
+
+
+def get_mode_status():
+    """Get the current knowledge status for each mode."""
+    try:
+        modes = check_available_modes()
+        return {
+            "hr": {
+                "available": modes["hr"]["available"],
+                "description": "Human Resources documents" if modes["hr"]["available"] else "No HR documents indexed"
+            },
+            "qa": {
+                "available": modes["qa"]["available"], 
+                "description": "QA Testing documents" if modes["qa"]["available"] else "No QA documents indexed"
+            }
+        }
+    except Exception as e:
+        # Fallback if there's an error checking modes
+        return {
+            "hr": {"available": False, "description": "Status unknown"},
+            "qa": {"available": False, "description": "Status unknown"}
+        }
 
 
 def initialize_session_state():
@@ -73,31 +96,81 @@ def main():
     # Mode selection interface
     if st.session_state.mode is None:
         st.info("Please select the application mode to continue:")
+        
+        # Get mode status
+        mode_status = get_mode_status()
+        
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🧑‍💼 Human Resources", use_container_width=True):
+            # HR Mode button with status
+            hr_status = mode_status["hr"]
+            hr_icon = "✅" if hr_status["available"] else "⚠️"
+            hr_label = f"🧑‍💼 Human Resources {hr_icon}"
+            hr_help = f"{hr_status['description']}"
+            
+            if st.button(hr_label, use_container_width=True, help=hr_help):
                 st.session_state.mode = "hr"
+                if hr_status["available"]:
+                    content = "Hello! I'm here to help with Human Resources questions using our indexed HR documents. What would you like to know?"
+                else:
+                    content = "Hello! I'm here to help with Human Resources questions. Note: No HR documents are currently indexed, so I'll provide general assistance. What would you like to know?"
                 st.session_state.messages = [{
                     "role": "assistant",
-                    "content": "Hello! I'm here to help with Human Resources questions. What would you like to know?"
+                    "content": content
                 }]
                 st.rerun()
                 
         with col2:
-            if st.button("🧪 QA Testing", use_container_width=True):
+            # QA Mode button with status
+            qa_status = mode_status["qa"]
+            qa_icon = "✅" if qa_status["available"] else "⚠️"
+            qa_label = f"🧪 QA Testing {qa_icon}"
+            qa_help = f"{qa_status['description']}"
+            
+            if st.button(qa_label, use_container_width=True, help=qa_help):
                 st.session_state.mode = "qa"
+                if qa_status["available"]:
+                    content = "Hello! I'm here to help with QA Testing questions using our indexed testing documents. What would you like to know?"
+                else:
+                    content = "Hello! I'm here to help with QA Testing questions. Note: No QA documents are currently indexed, so I'll provide general assistance. What would you like to know?"
                 st.session_state.messages = [{
                     "role": "assistant",
-                    "content": "Hello! I'm here to help with QA Testing questions. What would you like to know?"
+                    "content": content
                 }]
                 st.rerun()
+        
+        # Show status information
+        st.markdown("### Knowledge Base Status")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if mode_status["hr"]["available"]:
+                st.success("✅ HR Documents: Available")
+            else:
+                st.warning("⚠️ HR Documents: Not indexed")
+                st.caption("Run `indexerHR.py` to index HR documents")
+                
+        with col2:
+            if mode_status["qa"]["available"]:
+                st.success("✅ QA Documents: Available") 
+            else:
+                st.warning("⚠️ QA Documents: Not indexed")
+                st.caption("Run `indexerQA.py` to index QA documents")
                 
         st.stop()  # Stop execution until mode is selected
     
-    # Display current mode
+    # Display current mode with knowledge status
+    mode_status = get_mode_status()
+    current_mode_status = mode_status[st.session_state.mode]
     mode_labels = {"hr": "🧑‍💼 Human Resources", "qa": "🧪 QA Testing"}
-    st.success(f"Current mode: {mode_labels[st.session_state.mode]}")
+    status_icon = "✅" if current_mode_status["available"] else "⚠️"
+    
+    st.success(f"Current mode: {mode_labels[st.session_state.mode]} {status_icon}")
+    
+    if not current_mode_status["available"]:
+        indexer_file = "indexerHR.py" if st.session_state.mode == "hr" else "indexerQA.py"
+        st.info(f"💡 To enable document search for this mode, run `{indexer_file}` to index your documents.")
     
     # Display chat history
     display_chat_history()
@@ -136,6 +209,24 @@ def main():
         2. Add your custom logic for generating responses
         3. Install any additional dependencies in `requirements.txt`
         """)
+        
+        st.header("Knowledge Base Status")
+        mode_status = get_mode_status()
+        
+        # HR Status
+        if mode_status["hr"]["available"]:
+            st.success("✅ HR Documents: Indexed")
+        else:
+            st.warning("⚠️ HR Documents: Not indexed")
+            
+        # QA Status  
+        if mode_status["qa"]["available"]:
+            st.success("✅ QA Documents: Indexed")
+        else:
+            st.warning("⚠️ QA Documents: Not indexed")
+            
+        if not mode_status["hr"]["available"] or not mode_status["qa"]["available"]:
+            st.caption("Run the appropriate indexer script to enable document search")
         
         st.header("Chat Controls")
         if st.button("Clear Chat History"):
