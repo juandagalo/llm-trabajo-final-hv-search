@@ -7,6 +7,6 @@ if __name__ == "__main__":
         default_index_path="./faiss_index_hr.faiss",
         default_chunks_path="chunks_hr.parquet",
         indexer_type="HR",
-        chunk_size=200,
-        overlap=20
+        chunk_size=100,
+        overlap=10
     )
