@@ -39,8 +39,6 @@ class RAGService:
             }
             
             assistant_reply = mode_responses.get(mode, mode_responses["hr"])
-            conversation_history.append({"role": "user", "content": query})
-            conversation_history.append({"role": "assistant", "content": assistant_reply})
             return assistant_reply
         
         # Perform document search
@@ -58,8 +56,8 @@ class RAGService:
                      f"Pregunta: {query}\n"
                      f"Respuesta:")
         
-        # Add to conversation history
-        conversation_history.append({"role": "user", "content": prompt})
+        temp_conversation = conversation_history.copy()
+        temp_conversation.append({"role": "user", "content": prompt})
         
         # Generate response
         client = get_azure_client()
@@ -67,12 +65,12 @@ class RAGService:
         
         response = client.chat.completions.create(
             model=model,
-            messages=conversation_history
+            messages=temp_conversation
         )
         
         assistant_reply = response.choices[0].message.content
-        conversation_history.append({"role": "assistant", "content": assistant_reply})
         
+        # Don't modify the original conversation_history here - let the calling function handle it
         return assistant_reply
 
 

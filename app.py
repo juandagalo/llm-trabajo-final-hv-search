@@ -250,7 +250,7 @@ def main():
             st.success(f"✅ HR Documents: {file_count} files")
             processed_files = mode_status["hr"].get("processed_files", [])
             if processed_files and st.button("📋 View HR Files", key="hr_files"):
-                st.text("\\n".join(processed_files))
+                st.text("\n".join(processed_files))
         else:
             st.warning("⚠️ HR Documents: Not indexed")
             
@@ -260,7 +260,7 @@ def main():
             st.success(f"✅ QA Documents: {file_count} files")
             processed_files = mode_status["qa"].get("processed_files", [])
             if processed_files and st.button("📋 View QA Files", key="qa_files"):
-                st.text("\\n".join(processed_files))
+                st.text("\n".join(processed_files))
         else:
             st.warning("⚠️ QA Documents: Not indexed")
             
