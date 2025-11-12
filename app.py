@@ -3,10 +3,15 @@ Streamlit Chat Application for LLM HV Search
 Refactored version using the new modular structure with login-based access control.
 """
 import sys
+import os
 from pathlib import Path
 import streamlit as st
 from typing import List, Dict, Any
 import json
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
 
 # Add src to Python path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -17,17 +22,40 @@ from src.core.search import check_available_modes, search
 
 
 def load_credentials():
-    """Load user credentials from credentials.json file."""
-    credentials_path = Path(__file__).parent / "credentials.json"
+    """Load user credentials from environment variables or Streamlit secrets."""
     try:
-        with open(credentials_path, 'r') as f:
-            data = json.load(f)
-            return data.get("users", [])
-    except FileNotFoundError:
-        st.error("⚠️ credentials.json file not found!")
-        return []
-    except json.JSONDecodeError:
-        st.error("⚠️ Invalid credentials.json format!")
+        users_string = ""
+        
+        # Try to get from environment variable first (for local development)
+        users_string = os.getenv('APP_USERS', '')
+        
+        # If not found in env vars, try Streamlit secrets (for deployment)
+        if not users_string:
+            try:
+                if hasattr(st, 'secrets') and 'APP_USERS' in st.secrets:
+                    users_string = st.secrets['APP_USERS']
+            except Exception:
+                # Secrets not available, continue with empty string
+                pass
+        
+        if not users_string:
+            st.error("⚠️ No user credentials configured! Please set APP_USERS in your .env file or Streamlit secrets.")
+            return []
+        
+        # Parse the credentials string (format: username1:password1,username2:password2)
+        users = []
+        for user_pair in users_string.split(','):
+            if ':' in user_pair:
+                username, password = user_pair.strip().split(':', 1)
+                users.append({
+                    "username": username.strip(),
+                    "password": password.strip()
+                })
+                print(f"Loaded user: {username.strip()}")
+        
+        return users
+    except Exception as e:
+        st.error(f"⚠️ Error loading credentials: {str(e)}")
         return []
 
 
