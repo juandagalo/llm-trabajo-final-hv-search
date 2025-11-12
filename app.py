@@ -1,18 +1,43 @@
 """
 Streamlit Chat Application for LLM HV Search
-Refactored version using the new modular structure.
+Refactored version using the new modular structure with login-based access control.
 """
 import sys
 from pathlib import Path
 import streamlit as st
 from typing import List, Dict, Any
+import json
 
 # Add src to Python path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from src.core.rag import answer_question
 from src.core.azure_client import is_mock_mode
-from src.core.search import check_available_modes
+from src.core.search import check_available_modes, search
+
+
+def load_credentials():
+    """Load user credentials from credentials.json file."""
+    credentials_path = Path(__file__).parent / "credentials.json"
+    try:
+        with open(credentials_path, 'r') as f:
+            data = json.load(f)
+            return data.get("users", [])
+    except FileNotFoundError:
+        st.error("⚠️ credentials.json file not found!")
+        return []
+    except json.JSONDecodeError:
+        st.error("⚠️ Invalid credentials.json format!")
+        return []
+
+
+def verify_credentials(username: str, password: str) -> bool:
+    """Verify if username and password match credentials."""
+    users = load_credentials()
+    for user in users:
+        if user.get("username") == username and user.get("password") == password:
+            return True
+    return False
 
 
 def get_mode_status():
@@ -51,16 +76,115 @@ def get_mode_status():
         }
 
 
+def answer_question_with_access_control(query: str, conversation_history: List[Dict[str, str]], is_logged_in: bool) -> str:
+    """
+    Answer a question with access control - searches QA only or QA+HR based on login status.
+    
+    Args:
+        query: User's question
+        conversation_history: List of conversation messages
+        is_logged_in: Whether user is logged in (True = access to both QA+HR, False = QA only)
+        
+    Returns:
+        Generated answer
+    """
+    from src.core.azure_client import get_azure_client, get_chat_model
+    import pandas as pd
+    
+    if is_mock_mode():
+        # Return mock response based on access level
+        if is_logged_in:
+            response = (f"[DEMO MODE - Full Access] Regarding '{query}': "
+                       "This would search both QA Testing and HR documents to provide comprehensive answers "
+                       "from both knowledge bases. You have access to information about software testing, "
+                       "quality assurance, human resources, hiring, and workplace policies.")
+        else:
+            response = (f"[DEMO MODE - QA Access Only] Regarding '{query}': "
+                       "This would search QA Testing documents to provide answers about software testing, "
+                       "quality assurance methodologies, test automation, and testing best practices. "
+                       "Login to access HR documents as well.")
+        return response
+    
+    # Check which indexes are available
+    mode_status = get_mode_status()
+    qa_available = mode_status["qa"]["available"]
+    hr_available = mode_status["hr"]["available"]
+    
+    context_documents = []
+    
+    # Perform document search based on access level and availability
+    try:
+        if is_logged_in:
+            # Search both QA and HR documents if available
+            if qa_available and hr_available:
+                qa_results = search(query, mode="qa", k=5)
+                hr_results = search(query, mode="hr", k=5)
+                
+                # Combine results
+                combined_results = pd.concat([qa_results, hr_results], ignore_index=True)
+                combined_results = combined_results.sort_values("cosine_similarity", ascending=False).head(10)
+                context_documents = list(combined_results['text'].values)
+            elif qa_available:
+                # Only QA available
+                qa_results = search(query, mode="qa", k=10)
+                context_documents = list(qa_results['text'].values)
+            elif hr_available:
+                # Only HR available
+                hr_results = search(query, mode="hr", k=10)
+                context_documents = list(hr_results['text'].values)
+        else:
+            # Search only QA documents (guest mode)
+            if qa_available:
+                qa_results = search(query, mode="qa", k=10)
+                context_documents = list(qa_results['text'].values)
+    except Exception as e:
+        # If search fails, provide a response without context
+        st.warning(f"⚠️ Could not search documents: {str(e)}")
+    
+    # Create prompt with or without context
+    if context_documents:
+        context = "\n\n".join(context_documents)
+        prompt = (f"Contexto:\n{context}\n\n"
+                 f"Pregunta: {query}\n"
+                 f"Respuesta:")
+    else:
+        # No context available - general response
+        if is_logged_in:
+            prompt = (f"No hay documentos indexados disponibles. Responde de manera general como experto en QA y HR.\n\n"
+                     f"Pregunta: {query}\n"
+                     f"Respuesta:")
+        else:
+            prompt = (f"No hay documentos indexados disponibles. Responde de manera general como experto en QA.\n\n"
+                     f"Pregunta: {query}\n"
+                     f"Respuesta:")
+    
+    temp_conversation = conversation_history.copy()
+    temp_conversation.append({"role": "user", "content": prompt})
+    
+    # Generate response
+    client = get_azure_client()
+    model = get_chat_model()
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=temp_conversation
+    )
+    
+    assistant_reply = response.choices[0].message.content
+    return assistant_reply
+
+
 def process_user_message(message: str) -> str:
     """Process user message using the conversation history from session_state."""
-    # Define system prompts for different modes
-    system_prompts = {
-        "hr": "Eres un experto en recursos humanos y selección de personal.",
-        "qa": "Eres un experto en pruebas de software, control de calidad y QA testing."
-    }
+    # Determine access level based on login status
+    is_logged_in = st.session_state.get("is_logged_in", False)
     
-    # Get the system prompt based on selected mode
-    system_content = system_prompts.get(st.session_state.mode, system_prompts["hr"])
+    # Define system prompt based on access level
+    if is_logged_in:
+        system_content = ("Eres un experto en recursos humanos, selección de personal, "
+                         "pruebas de software, control de calidad y QA testing.")
+    else:
+        system_content = "Eres un experto en pruebas de software, control de calidad y QA testing. Tienes prohibido responder preguntas sobre recursos humanos en cualquier ambito."
     
     # Ensure conversation history has system message
     if not st.session_state.messages or st.session_state.messages[0]["role"] != "system":
@@ -69,11 +193,11 @@ def process_user_message(message: str) -> str:
             "content": system_content
         })
     else:
-        # Update system message if mode has changed
+        # Update system message if login state has changed
         st.session_state.messages[0]["content"] = system_content
     
-    # Process the message using RAG
-    return answer_question(message, st.session_state.messages, st.session_state.mode)
+    # Process the message using RAG with combined search if logged in
+    return answer_question_with_access_control(message, st.session_state.messages, is_logged_in)
 
 
 def initialize_session_state():
@@ -82,11 +206,14 @@ def initialize_session_state():
         st.session_state.messages = []
         st.session_state.messages.append({
             "role": "assistant",
-            "content": "Hello! I'm here to help. What would you like to chat about?"
+            "content": "Hello! I'm here to help with QA Testing questions. What would you like to know?"
         })
     
-    if "mode" not in st.session_state:
-        st.session_state.mode = None
+    if "is_logged_in" not in st.session_state:
+        st.session_state.is_logged_in = False
+    
+    if "username" not in st.session_state:
+        st.session_state.username = None
 
 
 def display_chat_history():
@@ -117,96 +244,108 @@ def main():
     # Initialize session state
     initialize_session_state()
     
-    # Mode selection interface
-    if st.session_state.mode is None:
-        st.info("Please select the application mode to continue:")
-        
-        # Get mode status
-        mode_status = get_mode_status()
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # HR Mode button with status
-            hr_status = mode_status["hr"]
-            hr_icon = "✅" if hr_status["available"] else "⚠️"
-            hr_label = f"🧑‍💼 Human Resources {hr_icon}"
-            hr_help = f"{hr_status['description']}"
-            
-            if st.button(hr_label, use_container_width=True, help=hr_help):
-                st.session_state.mode = "hr"
-                if hr_status["available"]:
-                    content = ("Hello! I'm here to help with Human Resources questions using our "
-                             "indexed HR documents. What would you like to know?")
-                else:
-                    content = ("Hello! I'm here to help with Human Resources questions. "
-                             "Note: No HR documents are currently indexed, so I'll provide general assistance. "
-                             "What would you like to know?")
-                st.session_state.messages = [{"role": "assistant", "content": content}]
-                st.rerun()
-                
-        with col2:
-            # QA Mode button with status
-            qa_status = mode_status["qa"]
-            qa_icon = "✅" if qa_status["available"] else "⚠️"
-            qa_label = f"🧪 QA Testing {qa_icon}"
-            qa_help = f"{qa_status['description']}"
-            
-            if st.button(qa_label, use_container_width=True, help=qa_help):
-                st.session_state.mode = "qa"
-                if qa_status["available"]:
-                    content = ("Hello! I'm here to help with QA Testing questions using our "
-                             "indexed testing documents. What would you like to know?")
-                else:
-                    content = ("Hello! I'm here to help with QA Testing questions. "
-                             "Note: No QA documents are currently indexed, so I'll provide general assistance. "
-                             "What would you like to know?")
-                st.session_state.messages = [{"role": "assistant", "content": content}]
-                st.rerun()
-        
-        # Show status information
-        st.markdown("### Knowledge Base Status")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if mode_status["hr"]["available"]:
-                file_count = mode_status["hr"].get("file_count", 0)
-                st.success(f"✅ HR Documents: {file_count} files indexed")
-                processed_files = mode_status["hr"].get("processed_files", [])
-                if processed_files:
-                    with st.expander("View indexed HR files"):
-                        for filename in processed_files:
-                            st.text(f"📄 {filename}")
-            else:
-                st.warning("⚠️ HR Documents: Not indexed")
-                st.caption("Run `indexer_hr.py` to index HR documents")
-                
-        with col2:
-            if mode_status["qa"]["available"]:
-                file_count = mode_status["qa"].get("file_count", 0)
-                st.success(f"✅ QA Documents: {file_count} files indexed")
-                processed_files = mode_status["qa"].get("processed_files", [])
-                if processed_files:
-                    with st.expander("View indexed QA files"):
-                        for filename in processed_files:
-                            st.text(f"📄 {filename}")
-            else:
-                st.warning("⚠️ QA Documents: Not indexed")
-                st.caption("Run `indexer_qa.py` to index QA documents")
-                
-        st.stop()  # Stop execution until mode is selected
+    # Display login status and access level
+    is_logged_in = st.session_state.get("is_logged_in", False)
     
-    # Display current mode with knowledge status
+    # Create header with login status badge
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if is_logged_in:
+            st.success(f"✅ Logged in as: **{st.session_state.username}** | Access: **QA + HR Documents**")
+        else:
+            st.info("ℹ️ Guest Mode | Access: **QA Documents Only** | Login for HR access")
+    with col2:
+        if is_logged_in:
+            if st.button("🚪 Logout", use_container_width=True):
+                st.session_state.is_logged_in = False
+                st.session_state.username = None
+                st.session_state.messages = [{
+                    "role": "assistant",
+                    "content": "You've been logged out. Chat history has been cleared for security. You now have access to QA documents only."
+                }]
+                st.rerun()
+        else:
+            if st.button("🔐 Login", use_container_width=True):
+                st.session_state.show_login_form = True
+                st.rerun()
+    
+    # Show login form if requested
+    if not is_logged_in and st.session_state.get("show_login_form", False):
+        st.markdown("---")
+        with st.form("login_form"):
+            st.subheader("🔐 Login to Access HR Documents")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            col1, col2 = st.columns(2)
+            with col1:
+                submit = st.form_submit_button("Login", use_container_width=True)
+            with col2:
+                cancel = st.form_submit_button("Cancel", use_container_width=True)
+            
+            if submit:
+                if verify_credentials(username, password):
+                    st.session_state.is_logged_in = True
+                    st.session_state.username = username
+                    st.session_state.show_login_form = False
+                    st.session_state.messages = [{
+                        "role": "assistant",
+                        "content": f"Welcome back, {username}! You now have access to both QA and HR documents. What would you like to know?"
+                    }]
+                    st.success("✅ Login successful!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid username or password")
+            
+            if cancel:
+                st.session_state.show_login_form = False
+                st.rerun()
+        st.markdown("---")
+    
+    # Get mode status
     mode_status = get_mode_status()
-    current_mode_status = mode_status[st.session_state.mode]
-    mode_labels = {"hr": "🧑‍💼 Human Resources", "qa": "🧪 QA Testing"}
-    status_icon = "✅" if current_mode_status["available"] else "⚠️"
     
-    st.success(f"Current mode: {mode_labels[st.session_state.mode]} {status_icon}")
+    # Show knowledge base status
+    st.markdown("### 📚 Knowledge Base Status")
+    col1, col2 = st.columns(2)
     
-    if not current_mode_status["available"]:
-        indexer_file = "indexer_hr.py" if st.session_state.mode == "hr" else "indexer_qa.py"
-        st.info(f"💡 To enable document search for this mode, run `{indexer_file}` to index your documents.")
+    with col1:
+        qa_status = mode_status["qa"]
+        qa_icon = "✅" if qa_status["available"] else "⚠️"
+        st.markdown(f"**� QA Documents {qa_icon}**")
+        if qa_status["available"]:
+            file_count = qa_status.get("file_count", 0)
+            st.success(f"✅ {file_count} files indexed")
+            processed_files = qa_status.get("processed_files", [])
+            if processed_files:
+                with st.expander("View indexed QA files"):
+                    for filename in processed_files:
+                        st.text(f"📄 {filename}")
+        else:
+            st.warning("⚠️ Not indexed")
+            st.caption("Run `indexer_qa.py` to index QA documents")
+    
+    with col2:
+        hr_status = mode_status["hr"]
+        hr_icon = "✅" if hr_status["available"] else "⚠️"
+        if is_logged_in:
+            st.markdown(f"**🧑‍💼 HR Documents {hr_icon}** (Access Granted)")
+        else:
+            st.markdown(f"**🧑‍💼 HR Documents {hr_icon}** (🔒 Login Required)")
+        
+        if hr_status["available"]:
+            file_count = hr_status.get("file_count", 0)
+            if is_logged_in:
+                st.success(f"✅ {file_count} files indexed")
+            else:
+                st.info(f"🔒 {file_count} files (Login to access)")
+            processed_files = hr_status.get("processed_files", [])
+            if processed_files and is_logged_in:
+                with st.expander("View indexed HR files"):
+                    for filename in processed_files:
+                        st.text(f"📄 {filename}")
+        else:
+            st.warning("⚠️ Not indexed")
+            st.caption("Run `indexer_hr.py` to index HR documents")
     
     # Display chat history
     display_chat_history()
@@ -236,50 +375,55 @@ def main():
         This is a Streamlit chat application for HR and QA document search using 
         LLM and vector similarity search.
         
-        **Current Features:**
-        - Human Resources mode: Expert help with HR questions
-        - QA Testing mode: Expert help with software testing questions
-        - Document-based search when indexes are available
+        **Access Levels:**
+        - **Guest Mode**: Access to QA Testing documents only
+        - **Logged In**: Access to both QA Testing and HR documents
+        
+        **Features:**
+        - Login-based access control
+        - Combined document search when logged in
+        - Document-based RAG responses
         - File tracking to see what documents are indexed
         """)
+        
+        st.header("Access Information")
+        if is_logged_in:
+            st.success(f"✅ **Logged in as:** {st.session_state.username}")
+            st.info("📚 **Your Access:**\n- ✅ QA Testing Documents\n- ✅ HR Documents")
+        else:
+            st.info("👤 **Guest Mode**")
+            st.warning("📚 **Your Access:**\n- ✅ QA Testing Documents\n- 🔒 HR Documents (Login required)")
         
         st.header("Knowledge Base Status")
         mode_status = get_mode_status()
         
-        # HR Status
-        if mode_status["hr"]["available"]:
-            file_count = mode_status["hr"].get("file_count", 0)
-            st.success(f"✅ HR Documents: {file_count} files")
-            processed_files = mode_status["hr"].get("processed_files", [])
-            if processed_files and st.button("📋 View HR Files", key="hr_files"):
-                st.text("\n".join(processed_files))
-        else:
-            st.warning("⚠️ HR Documents: Not indexed")
-            
-        # QA Status  
+        # QA Status
         if mode_status["qa"]["available"]:
             file_count = mode_status["qa"].get("file_count", 0)
             st.success(f"✅ QA Documents: {file_count} files")
-            processed_files = mode_status["qa"].get("processed_files", [])
-            if processed_files and st.button("📋 View QA Files", key="qa_files"):
-                st.text("\n".join(processed_files))
         else:
             st.warning("⚠️ QA Documents: Not indexed")
+        
+        # HR Status
+        if mode_status["hr"]["available"]:
+            file_count = mode_status["hr"].get("file_count", 0)
+            if is_logged_in:
+                st.success(f"✅ HR Documents: {file_count} files")
+            else:
+                st.info(f"� HR Documents: {file_count} files (Login required)")
+        else:
+            st.warning("⚠️ HR Documents: Not indexed")
             
         if not mode_status["hr"]["available"] or not mode_status["qa"]["available"]:
             st.caption("Run the appropriate indexer script to enable document search")
         
         st.header("Chat Controls")
-        if st.button("Clear Chat History"):
+        if st.button("🗑️ Clear Chat History", use_container_width=True):
+            access_msg = "both QA and HR documents" if is_logged_in else "QA documents"
             st.session_state.messages = [{
                 "role": "assistant",
-                "content": "Hello! I'm here to help. What would you like to chat about?"
+                "content": f"Chat history cleared! I'm here to help with {access_msg}. What would you like to know?"
             }]
-            st.rerun()
-            
-        if st.button("Change Mode"):
-            st.session_state.mode = None
-            st.session_state.messages = []
             st.rerun()
 
 
