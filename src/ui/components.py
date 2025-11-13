@@ -4,7 +4,7 @@ Contains all Streamlit UI components and display functions.
 """
 import streamlit as st
 from typing import Dict, Any
-from ..auth.authentication import is_user_logged_in, get_current_username, verify_credentials, login_user, logout_user
+from ..auth.authentication import is_user_logged_in, get_current_username, verify_credentials, login_user, logout_user, get_current_user_role, is_admin_user
 from ..core.search import check_available_modes
 
 
@@ -26,12 +26,15 @@ def display_login_status():
     """Display login status and login/logout buttons."""
     is_logged_in = is_user_logged_in()
     username = get_current_username()
+    user_role = get_current_user_role()
     
     # Create header with login status badge
     col1, col2 = st.columns([3, 1])
     with col1:
         if is_logged_in:
-            st.success(f"✅ Logged in as: **{username}** | Access: **QA + HR Documents**")
+            role_badge = " 👑 **ADMIN**" if user_role == "admin" else ""
+            access_level = "QA + HR Documents + Admin Access" if user_role == "admin" else "QA + HR Documents"
+            st.success(f"✅ Logged in as: **{username}**{role_badge} | Access: **{access_level}**")
         else:
             st.info("ℹ️ Guest Mode | Access: **QA Documents Only** | Login for HR access")
     with col2:
@@ -155,10 +158,12 @@ def display_sidebar():
         - Combined document search when logged in
         - Document-based RAG responses
         - File tracking to see what documents are indexed
+        - Excel editing (logged-in users only)
         """)
         
         _display_sidebar_access_info()
         _display_sidebar_knowledge_status()
+        _display_sidebar_excel_info()
         _display_sidebar_chat_controls()
 
 
@@ -168,12 +173,20 @@ def _display_sidebar_access_info():
     username = get_current_username()
     
     st.header("Access Information")
+    user_role = get_current_user_role()
+    
     if is_logged_in:
-        st.success(f"✅ **Logged in as:** {username}")
-        st.info("📚 **Your Access:**\n- ✅ QA Testing Documents\n- ✅ HR Documents")
+        role_badge = " 👑" if user_role == "admin" else ""
+        st.success(f"✅ **Logged in as:** {username}{role_badge}")
+        
+        access_items = ["- ✅ QA Testing Documents", "- ✅ HR Documents", "- 📊 Excel Editing"]
+        if user_role == "admin":
+            access_items.append("- 👑 Admin Access (All Users)")
+            
+        st.info("📚 **Your Access:**\n" + "\n".join(access_items))
     else:
         st.info("👤 **Guest Mode**")
-        st.warning("📚 **Your Access:**\n- ✅ QA Testing Documents\n- 🔒 HR Documents (Login required)")
+        st.warning("📚 **Your Access:**\n- ✅ QA Testing Documents\n- 🔒 HR Documents (Login required)\n- 🔒 Excel Editing (Login required)")
 
 
 def _display_sidebar_knowledge_status():
@@ -201,6 +214,50 @@ def _display_sidebar_knowledge_status():
         
     if not mode_status["hr"]["available"] or not mode_status["qa"]["available"]:
         st.caption("Run the appropriate indexer script to enable document search")
+
+
+def _display_sidebar_excel_info():
+    """Display Excel functionality information in sidebar."""
+    is_logged_in = is_user_logged_in()
+    user_role = get_current_user_role()
+    
+    st.header("Excel Functions")
+    if is_logged_in:
+        if user_role == "admin":
+            st.success("📊 Excel editing enabled 👑 Admin")
+        else:
+            st.success("📊 Excel editing enabled")
+            
+        with st.expander("Excel Commands"):
+            basic_commands = """
+            **Available Excel files:**
+            - employee_data.xlsx
+            - project_tracker.xlsx
+            - time_tracking.xlsx
+            - performance_review.xlsx
+            
+            **Personal commands:**
+            - "Update my status to completed in project_tracker.xlsx"
+            - "Set my progress to 75% in project_tracker.xlsx"  
+            - "Show my data in employee_data.xlsx"
+            - "Change my department to IT in employee_data.xlsx"
+            """
+            
+            admin_commands = """
+            
+            **Admin commands:**
+            - "Update juan's status to completed in project_tracker.xlsx"
+            - "Show maria's data in employee_data.xlsx"
+            - "Show all users in project_tracker.xlsx"
+            - "Set carlos' progress to 90% in project_tracker.xlsx"
+            """
+            
+            if user_role == "admin":
+                st.markdown(basic_commands + admin_commands)
+            else:
+                st.markdown(basic_commands)
+    else:
+        st.info("🔒 Excel editing requires login")
 
 
 def _display_sidebar_chat_controls():

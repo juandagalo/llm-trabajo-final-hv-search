@@ -28,16 +28,24 @@ def load_credentials() -> List[Dict[str, str]]:
             st.error("⚠️ No user credentials configured! Please set APP_USERS in your .env file or Streamlit secrets.")
             return []
         
-        # Parse the credentials string (format: username1:password1,username2:password2)
+        # Parse the credentials string 
+        # Format: username1:password1:role1,username2:password2:role2
+        # If no role specified, defaults to 'user'
         users = []
         for user_pair in users_string.split(','):
-            if ':' in user_pair:
-                username, password = user_pair.strip().split(':', 1)
+            parts = user_pair.strip().split(':')
+            if len(parts) >= 2:
+                username = parts[0].strip()
+                password = parts[1].strip()
+                role = parts[2].strip().lower() if len(parts) >= 3 else 'user'
+                
                 users.append({
-                    "username": username.strip(),
-                    "password": password.strip()
+                    "username": username,
+                    "password": password,
+                    "role": role
                 })
-                print(f"Loaded user: {username.strip()}")
+                role_display = f" ({role})" if role != 'user' else ""
+                print(f"Loaded user: {username}{role_display}")
         
         return users
     except Exception as e:
@@ -54,6 +62,32 @@ def verify_credentials(username: str, password: str) -> bool:
     return False
 
 
+def get_user_role(username: str) -> str:
+    """Get the role of a specific user."""
+    users = load_credentials()
+    for user in users:
+        if user.get("username") == username:
+            return user.get("role", "user")
+    return "user"
+
+
+def is_admin_user(username: str = None) -> bool:
+    """Check if the specified user (or current user) has admin role."""
+    if username is None:
+        username = get_current_username()
+    
+    if not username:
+        return False
+        
+    return get_user_role(username) == "admin"
+
+
+def get_current_user_role() -> str:
+    """Get the role of the currently logged-in user."""
+    username = get_current_username()
+    return get_user_role(username) if username else "guest"
+
+
 def is_user_logged_in() -> bool:
     """Check if a user is currently logged in."""
     return st.session_state.get("is_logged_in", False)
@@ -68,6 +102,7 @@ def login_user(username: str) -> None:
     """Log in a user by setting session state."""
     st.session_state.is_logged_in = True
     st.session_state.username = username
+    st.session_state.user_role = get_user_role(username)
     st.session_state.show_login_form = False
 
 
@@ -75,6 +110,7 @@ def logout_user() -> None:
     """Log out the current user and clear session state."""
     st.session_state.is_logged_in = False
     st.session_state.username = None
+    st.session_state.user_role = None
     if 'show_login_form' in st.session_state:
         del st.session_state.show_login_form
 
@@ -82,7 +118,11 @@ def logout_user() -> None:
 def get_user_access_level() -> str:
     """Get the access level description for the current user."""
     if is_user_logged_in():
-        return "QA + HR Documents"
+        role = get_current_user_role()
+        if role == "admin":
+            return "QA + HR Documents + Admin Access"
+        else:
+            return "QA + HR Documents"
     else:
         return "QA Documents Only"
 
@@ -90,7 +130,14 @@ def get_user_access_level() -> str:
 def get_system_message_content() -> str:
     """Get the appropriate system message content based on login status."""
     if is_user_logged_in():
-        return ("Eres un experto en recursos humanos, selección de personal, "
-                "pruebas de software, control de calidad y QA testing.")
+        role = get_current_user_role()
+        if role == "admin":
+            return ("Eres un experto en recursos humanos, selección de personal, "
+                   "pruebas de software, control de calidad y QA testing. "
+                   "Además, tienes acceso administrativo completo y puedes consultar "
+                   "y modificar información de cualquier usuario en los archivos Excel.")
+        else:
+            return ("Eres un experto en recursos humanos, selección de personal, "
+                    "pruebas de software, control de calidad y QA testing.")
     else:
         return "Eres un experto en pruebas de software, control de calidad y QA testing. Tienes prohibido responder preguntas sobre recursos humanos en cualquier ambito."

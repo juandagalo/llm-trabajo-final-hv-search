@@ -7,7 +7,8 @@ from typing import List, Dict, Any
 import pandas as pd
 from .azure_client import get_azure_client, get_chat_model, is_mock_mode
 from .search import check_available_modes, search
-from ..auth.authentication import is_user_logged_in, get_system_message_content
+from .excel_manager import handle_excel_command
+from ..auth.authentication import is_user_logged_in, get_system_message_content, get_current_username
 from ..ui.session_manager import ensure_system_message, get_conversation_history
 
 
@@ -142,10 +143,31 @@ def answer_question_with_access_control(query: str, conversation_history: List[D
     return assistant_reply
 
 
+def is_excel_command(message: str) -> bool:
+    """Detect if a message is an Excel-related command."""
+    excel_keywords = [
+        'excel', '.xlsx', 'update', 'edit', 'modify', 'change',
+        'show my data', 'my status', 'my progress', 'set my',
+        'update my', 'change my', 'project_tracker', 'employee_data',
+        'time_tracking', 'performance_review'
+    ]
+    message_lower = message.lower()
+    return any(keyword in message_lower for keyword in excel_keywords)
+
+
 def process_user_message(message: str) -> str:
     """Process user message using the conversation history from session_state."""
-    # Determine access level based on login status
+    # Check if user is logged in for Excel operations
     is_logged_in = is_user_logged_in()
+    current_username = get_current_username()
+    
+    # Handle Excel commands if detected and user is logged in
+    if is_excel_command(message):
+        if is_logged_in and current_username:
+            return handle_excel_command(message, current_username)
+        else:
+            return ("ℹ️ Excel editing functionality requires login. "
+                   "Please log in to access Excel files and modify your data.")
     
     # Define system prompt based on access level
     system_content = get_system_message_content()
