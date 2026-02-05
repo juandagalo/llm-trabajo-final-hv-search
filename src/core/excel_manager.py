@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple
 import json
 import re
 from ..config.settings import Config
-from .azure_client import get_azure_client, get_chat_model, is_mock_mode
+from .llm_client import get_claude_client, get_chat_model, is_mock_mode
 from ..auth.authentication import is_admin_user
 
 
@@ -332,9 +332,9 @@ def parse_excel_command(message: str) -> Dict:
             
         return result
     
-    # Use Azure OpenAI for better parsing when available
+    # Use Claude for better parsing when available
     try:
-        client = get_azure_client()
+        client = get_claude_client()
         
         extraction_prompt = f"""
         Parse this user request for Excel operations and respond with JSON only:
@@ -353,16 +353,14 @@ def parse_excel_command(message: str) -> Dict:
         Respond only with valid JSON, no other text.
         """
         
-        response = client.chat.completions.create(
+        response = client.messages.create(
             model=get_chat_model(),
-            messages=[
-                {"role": "system", "content": "You are a JSON parser. Respond only with valid JSON."},
-                {"role": "user", "content": extraction_prompt}
-            ],
-            temperature=0.1
+            max_tokens=512,
+            system="You are a JSON parser. Respond only with valid JSON.",
+            messages=[{"role": "user", "content": extraction_prompt}]
         )
         
-        parsed = json.loads(response.choices[0].message.content.strip())
+        parsed = json.loads(response.content[0].text.strip())
         return parsed
         
     except Exception as e:

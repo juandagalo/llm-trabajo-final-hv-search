@@ -13,12 +13,13 @@ load_dotenv()
 class Config:
     """Central configuration class for all application settings."""
     
-    # Azure OpenAI Configuration
-    AZURE_ENDPOINT = os.getenv("ENDPOINT")
-    AZURE_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-    AZURE_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
-    AZURE_EMBEDDING_DEPLOYMENT = os.getenv("DEPLOYMENT")
-    AZURE_CHAT_MODEL = os.getenv("AZURE_OPENAI_CHAT_MODEL", "gpt-4.1-nano")
+    # Claude (Anthropic) Configuration - for chat
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+    CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    
+    # OpenAI Configuration - for embeddings
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
     
     # Document Processing Configuration
     DEFAULT_CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 100))
@@ -68,15 +69,19 @@ class Config:
         Path(cls.QA_DOCUMENTS_FOLDER).mkdir(exist_ok=True)
     
     @classmethod
-    def validate_azure_config(cls) -> bool:
-        """Validate that Azure configuration is complete."""
-        required_configs = [
-            cls.AZURE_ENDPOINT,
-            cls.AZURE_API_KEY,
-            cls.AZURE_API_VERSION,
-            cls.AZURE_EMBEDDING_DEPLOYMENT
-        ]
-        return all(config is not None for config in required_configs)
+    def validate_claude_config(cls) -> bool:
+        """Validate that Claude (Anthropic) configuration is complete."""
+        return cls.ANTHROPIC_API_KEY is not None
+    
+    @classmethod
+    def validate_openai_config(cls) -> bool:
+        """Validate that OpenAI configuration for embeddings is complete."""
+        return cls.OPENAI_API_KEY is not None
+    
+    @classmethod
+    def validate_config(cls) -> bool:
+        """Validate that all required configuration is complete."""
+        return cls.validate_claude_config() and cls.validate_openai_config()
 
 
 # Ensure directories exist on import

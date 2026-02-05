@@ -5,7 +5,7 @@ Contains the main chat processing logic and message handling.
 import streamlit as st
 from typing import List, Dict, Any
 import pandas as pd
-from .azure_client import get_azure_client, get_chat_model, is_mock_mode
+from .llm_client import get_claude_client, get_chat_model, is_mock_mode
 from .search import check_available_modes, search
 from .excel_manager import handle_excel_command
 from ..auth.authentication import is_user_logged_in, get_system_message_content, get_current_username
@@ -130,16 +130,28 @@ def answer_question_with_access_control(query: str, conversation_history: List[D
     temp_conversation = conversation_history.copy()
     temp_conversation.append({"role": "user", "content": prompt})
     
-    # Generate response
-    client = get_azure_client()
+    # Generate response using Claude
+    client = get_claude_client()
     model = get_chat_model()
     
-    response = client.chat.completions.create(
+    # Extract system message and user messages for Claude API format
+    system_message = ""
+    messages_for_claude = []
+    
+    for msg in temp_conversation:
+        if msg["role"] == "system":
+            system_message = msg["content"]
+        else:
+            messages_for_claude.append({"role": msg["role"], "content": msg["content"]})
+    
+    response = client.messages.create(
         model=model,
-        messages=temp_conversation
+        max_tokens=4096,
+        system=system_message,
+        messages=messages_for_claude
     )
     
-    assistant_reply = response.choices[0].message.content
+    assistant_reply = response.content[0].text
     return assistant_reply
 
 

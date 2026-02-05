@@ -9,7 +9,7 @@ from typing import List, Tuple
 from pathlib import Path
 
 from ..config.settings import Config
-from ..core.azure_client import get_azure_client, get_embedding_deployment, is_mock_mode
+from ..core.llm_client import get_openai_client, get_embedding_model, is_mock_mode
 from ..utils.text_processing import collect_files, extract_text_from_file, chunk_text
 from ..utils.file_tracking import save_processed_files, get_filenames_path
 
@@ -42,8 +42,8 @@ class DocumentIndexer:
         Returns:
             Tuple of (chunks, embeddings)
         """
-        client = get_azure_client()
-        deployment = get_embedding_deployment()
+        client = get_openai_client()
+        model = get_embedding_model()
         
         chunks = []
         embeddings = []
@@ -71,7 +71,7 @@ class DocumentIndexer:
                 try:
                     response = client.embeddings.create(
                         input=file_chunks,
-                        model=deployment
+                        model=model
                     )
                     embs = [d.embedding for d in response.data]
                 except Exception as e:

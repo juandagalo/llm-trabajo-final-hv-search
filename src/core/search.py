@@ -8,7 +8,7 @@ import faiss
 from typing import Dict, List, Any
 
 from ..config.settings import Config
-from ..core.azure_client import get_azure_client, get_embedding_deployment, is_mock_mode
+from ..core.llm_client import get_openai_client, get_embedding_model, is_mock_mode
 from ..utils.file_tracking import load_processed_files, get_filenames_path
 
 
@@ -28,12 +28,12 @@ class DocumentSearcher:
             faiss.normalize_L2(emb)
             return emb
         
-        client = get_azure_client()
-        deployment = get_embedding_deployment()
+        client = get_openai_client()
+        model = get_embedding_model()
         
         response = client.embeddings.create(
             input=[text],
-            model=deployment
+            model=model
         )
         emb = np.array(response.data[0].embedding, dtype="float32")
         emb = np.ascontiguousarray(emb.reshape(1, -1))

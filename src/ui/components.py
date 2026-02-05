@@ -16,9 +16,9 @@ def display_header():
 
 def display_demo_warning():
     """Display demo mode warning if in mock mode."""
-    from ..core.azure_client import is_mock_mode
+    from ..core.llm_client import is_mock_mode
     if is_mock_mode():
-        st.warning("⚠️ Running in DEMO MODE - Azure OpenAI credentials not configured. "
+        st.warning("⚠️ Running in DEMO MODE - API credentials not configured. "
                   "Responses are simulated for demonstration purposes.")
 
 
