@@ -1,44 +1,38 @@
-# LLM Trabajo Final HV Search
+# LLM HV Search
 
-A sophisticated document search and chat application using Azure OpenAI, FAISS vector search, and Streamlit for HR and QA document management.
+A document search and chat application using Claude (Anthropic), OpenAI embeddings, FAISS vector search, and Streamlit.
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
-llm-trabajo-final-hv-search/
-├── src/                           # Source code modules
-│   ├── core/                      # Core business logic
-│   │   ├── __init__.py
-│   │   ├── azure_client.py        # Azure OpenAI client management
-│   │   ├── indexer.py             # Document indexing functionality
-│   │   ├── search.py              # FAISS search operations
-│   │   └── rag.py                 # RAG (Retrieval-Augmented Generation)
-│   ├── utils/                     # Utility functions
-│   │   ├── __init__.py
-│   │   ├── text_processing.py     # Text extraction and chunking
-│   │   └── file_tracking.py       # File tracking utilities
-│   ├── config/                    # Configuration management
-│   │   ├── __init__.py
-│   │   └── settings.py            # Centralized configuration
-│   └── __init__.py
-├── data/                          # Data directory
-│   └── indexes/                   # FAISS indexes and metadata
-├── DocumentosHR/                  # HR documents folder
-├── DocumentosQA/                  # QA documents folder
-├── app.py                         # Streamlit web application
-├── indexer_hr.py                  # HR document indexer script
-├── indexer_qa.py                  # QA document indexer script
-├── requirements.txt               # Python dependencies
-└── README.md                      # This file
+llm-hv-search/
+├── src/                    # Source modules
+│   ├── config.py          # Configuration
+│   ├── llm.py             # Claude + OpenAI clients
+│   ├── auth.py            # Authentication
+│   ├── search.py          # FAISS search
+│   ├── chat.py            # Chat handler with RAG
+│   ├── excel.py           # Excel operations
+│   ├── ui.py              # Streamlit UI
+│   └── indexer.py         # Document indexing
+├── data/indexes/          # FAISS indexes
+├── DocumentosHR/          # HR documents
+├── DocumentosQA/          # QA documents
+├── excel_data/            # Excel files
+├── app.py                 # Main application
+├── indexer.py             # Indexer CLI
+└── requirements.txt
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
-### 1. Environment Setup
+### 1. Setup
 
 ```bash
-# Activate virtual environment
-.venv\Scripts\Activate.ps1
+# Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1  # Windows
+source .venv/bin/activate   # Linux/Mac
 
 # Install dependencies
 pip install -r requirements.txt
@@ -46,169 +40,96 @@ pip install -r requirements.txt
 
 ### 2. Configuration
 
-Create a `.env` file with your Azure OpenAI credentials:
+Create a `.env` file:
 
 ```env
-ENDPOINT=https://your-openai-instance.openai.azure.com/
-AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_API_VERSION=2024-02-01
-DEPLOYMENT=text-embedding-3-small
-AZURE_OPENAI_CHAT_MODEL=gpt-4o
+# Claude (Anthropic) - for chat
+ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
+CLAUDE_MODEL=claude-sonnet-4-20250514
+
+# OpenAI - for embeddings
+OPENAI_API_KEY=sk-xxxxx
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+# Users (format: username:password:role)
+APP_USERS=admin:admin123:admin,user1:pass1:user
 ```
 
 ### 3. Index Documents
 
 ```bash
-# Index HR documents
-python indexer_hr.py
-
-# Index QA documents  
-python indexer_qa.py
+python indexer.py hr       # Index HR documents
+python indexer.py qa       # Index QA documents
+python indexer.py all      # Index both
 ```
 
-### 4. Run the Application
+### 4. Run
 
 ```bash
 streamlit run app.py
 ```
 
-## 📋 Features
+## Features
 
-### ✅ **Modular Architecture**
-- Clean separation of concerns
-- Reusable components
-- Easy to maintain and extend
+### Document Q&A
+- RAG-based question answering
+- Searches HR and/or QA documents based on login status
+- Conversation history
 
-### ✅ **Document Processing**
-- PDF and text file support
-- Intelligent text chunking
-- File tracking and metadata
+### Access Control
+| Role | QA Docs | HR Docs | Excel |
+|------|---------|---------|-------|
+| Guest | ✅ | ❌ | ❌ |
+| User | ✅ | ✅ | Own data |
+| Admin | ✅ | ✅ | All data |
 
-### ✅ **Vector Search**
-- FAISS-based similarity search
-- Azure OpenAI embeddings
-- Cosine similarity scoring
+### Excel Commands
+Logged-in users can edit Excel files via natural language:
 
-### ✅ **RAG Implementation**
-- Context-aware responses
-- Mode-specific prompts (HR/QA)
-- Conversation history management
-
-### ✅ **User Interface**
-- Interactive Streamlit chat interface
-- Mode selection (HR/QA)
-- Real-time status indicators
-- File list viewing
-
-### ✅ **Robust Configuration**
-- Centralized settings management
-- Environment variable support
-- Mock mode for testing
-
-## 🔧 Core Modules
-
-### `src.core.azure_client`
-Manages Azure OpenAI client configuration and provides singleton access.
-
-### `src.core.indexer`
-Handles document processing, embedding generation, and FAISS index creation.
-
-### `src.core.search`
-Provides document search functionality with similarity scoring.
-
-### `src.core.rag`
-Implements Retrieval-Augmented Generation for question answering.
-
-### `src.utils.text_processing`
-Text extraction, cleaning, and chunking utilities.
-
-### `src.utils.file_tracking`
-Tracks processed files and maintains metadata.
-
-### `src.config.settings`
-Centralized configuration management with environment variable support.
-
-## 🎯 Usage Examples
-
-### Indexing Documents
-
-```python
-from src.core.indexer import run_indexer
-
-# Index HR documents
-run_indexer(mode="hr", chunk_size=100, overlap=10)
-
-# Index QA documents
-run_indexer(mode="qa", chunk_size=150, overlap=15)
+```
+"Update my status to completed in project_tracker.xlsx"
+"Show my data in employee_data.xlsx"
+"Set my progress to 75% in project_tracker.xlsx"
 ```
 
-### Searching Documents
-
-```python
-from src.core.search import search
-
-# Search HR documents
-results = search("performance review process", k=5, mode="hr")
-
-# Search QA documents
-results = search("test automation", k=5, mode="qa")
+Admin users can also access other users' data:
+```
+"Show juan's data in employee_data.xlsx"
+"Update maria's status to active in project_tracker.xlsx"
 ```
 
-### RAG Question Answering
+### Available Excel Files
+- `employee_data.xlsx` - Employee info
+- `project_tracker.xlsx` - Project status
+- `time_tracking.xlsx` - Time sheets
+- `performance_review.xlsx` - Reviews
 
-```python
-from src.core.rag import answer_question
+## Deployment
 
-conversation = []
-answer = answer_question("What is the leave policy?", conversation, mode="hr")
+### Streamlit Cloud
+
+Add secrets in app settings:
+
+```toml
+ANTHROPIC_API_KEY = "sk-ant-api03-xxxxx"
+OPENAI_API_KEY = "sk-xxxxx"
+APP_USERS = "admin:admin123:admin,user1:pass1:user"
 ```
 
-## 📊 File Tracking
+### Environment Variables
 
-The system automatically tracks processed files:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | Claude API key | Required |
+| `OPENAI_API_KEY` | OpenAI API key (embeddings) | Required |
+| `CLAUDE_MODEL` | Claude model name | claude-sonnet-4-20250514 |
+| `OPENAI_EMBEDDING_MODEL` | Embedding model | text-embedding-3-small |
+| `APP_USERS` | User credentials | Required |
 
-- `data/indexes/chunks_hr_filenames.txt` - HR documents processed
-- `data/indexes/chunks_qa_filenames.txt` - QA documents processed
+## Demo Mode
 
-## 🛡️ Error Handling
+If API keys are not configured, the app runs in demo mode with simulated responses.
 
-- Graceful fallback to mock mode when Azure credentials are missing
-- Comprehensive error logging
-- Defensive programming with safe dictionary access
+## License
 
-## 🔄 Migration from Old Structure
-
-The old files (`main.py`, `indexerHR.py`, `indexerQA.py`, etc.) have been refactored into the new modular structure. The new simplified scripts (`app.py`, `indexer_hr.py`, `indexer_qa.py`) provide the same functionality with cleaner code organization.
-
-## 🧪 Testing
-
-```bash
-# Test the configuration
-python -c "from src.config.settings import Config; print('✅ Config loaded')"
-
-# Test Azure client
-python -c "from src.core.azure_client import get_azure_client; print('✅ Azure client ready')"
-
-# Test search functionality
-python -c "from src.core.search import check_available_modes; print(check_available_modes())"
-```
-
-## 📝 Development
-
-To add new features:
-
-1. Add new modules in appropriate `src/` subdirectories
-2. Update configuration in `src/config/settings.py` if needed
-3. Create corresponding tests
-4. Update this README
-
-## 🤝 Contributing
-
-1. Follow the established module structure
-2. Add proper docstrings and type hints
-3. Update configuration management for new settings
-4. Test both real and mock modes
-
-## 📄 License
-
-This project is part of the LLM Trabajo Final coursework.
+Part of LLM Trabajo Final coursework.
